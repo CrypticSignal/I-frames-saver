@@ -36,7 +36,7 @@ cmd = [
 
 print('Saving the I-frames as PNG files...')
 subprocess.run(cmd)
-print(f'Done! {filename} has {len(os.listdir(output_folder)) - 1} I-frames.')
+print(f'Done! {filename} has {len(os.listdir(output_folder))} I-frames.')
 
 print('Attempting to rename the PNG files to adhere to the HH-MM-SS.ms format...')
 
