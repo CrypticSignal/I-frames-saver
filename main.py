@@ -57,20 +57,20 @@ for file in os.listdir(output_folder):
     os.rename(os.path.join(output_folder, file), os.path.join(output_folder, new_filename))
 
 # Create a list, where the timestamps are sorted in ascending order.
-timestamps_sorted = sorted(os.listdir(output_folder))
+output_files_sorted = sorted(os.listdir(output_folder))
 # -1 because Timestamps.txt is not an I-frame.
 
 i_frame_number = 0
 with open(timestamps_path, "w"): pass
 print("Populating Timestamps.txt using the format <I-frame number> --> <timestamp>...")
 
-for timestamp in timestamps_sorted:
-    if timestamp == "Timestamps.txt":
+for filename in output_files_sorted:
+    if filename == "Timestamps.txt":
         continue
 
     i_frame_number += 1
 
     with open(timestamps_path, "a") as f:
-        f.write(f'{i_frame_number} --> {timestamp}\n')
+        f.write(f'{i_frame_number} --> {Path(filename).stem}\n')
 
 print(f'Done! Check out the "{output_folder}" folder.')
