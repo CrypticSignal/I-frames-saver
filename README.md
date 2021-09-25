@@ -1,4 +1,17 @@
-# I-frames Saver
-A command-line program that takes a video file as input and saves each I-frame as a PNG file. The filename of each PNG file is in the format `HH-MM-SS.ms`. As an example, if the first I-frame is present at 10.427 seconds into the video, the I-frame will be saved as `00-00-10.427.png`.
+# I-frames-saver
+A command-line program that takes a video file as input and saves the I-frames (or keyframes only by using the `-k` argument) as PNG files. 
 
-Using this program is very simple, simply specify the path of the video with the `-f` argument, e.g. `python main.py -f video.mp4`
+Using this program is very simple, simply specify the path of the video using the `-f` argument, e.g. `python3 main.py -f video.mp4`. Include the `-k` argument if you are only interested in keyframes, e.g. `python3 main.py -f video.mp4 -k`
+# Usage
+```
+usage: main.py [-h] -f FILE_PATH [-k]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f FILE_PATH, --file-path FILE_PATH
+                        Enter the path of the file that you want to analyse.
+                        If the path contains a space, it must be surrounded in double quotes.
+                        Example: -f "C:/Users/H/Desktop/my file.mp4"
+  -k, --key-frames-only
+                        Only process keyframes.
+```
