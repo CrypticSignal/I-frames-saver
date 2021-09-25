@@ -1,4 +1,6 @@
-**I-frames
+*.DS_Store
+*.png
+*.txt
 # Video Files
 *.3gp
 *.avi
