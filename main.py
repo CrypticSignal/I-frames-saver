@@ -1,76 +1,121 @@
 from argparse import ArgumentParser
+from fractions import Fraction
 import os
 from pathlib import Path
 import subprocess
 import sys
 
+from ffmpeg import probe
+
+
+def line():
+    print("---------------------------------------------------------------------------------------")
+
+
 parser = ArgumentParser()
 
 parser.add_argument(
-    '-f', '--file-path', 
-    type=str, 
+    "-f",
+    "--file-path",
+    type=str,
     required=True,
-    help='Enter the path of the file that you want to analyse. '
-         'If the path contains a space, it must be surrounded in double quotes. '
-         'Example: -f "C:/Users/H/Desktop/my file.mp4"'
+    help="Enter the path of the file that you want to analyse. "
+    "If the path contains a space, it must be surrounded in double quotes. "
+    'Example: -f "C:/Users/H/Desktop/my file.mp4"',
 )
 
+parser.add_argument("-k", "--key-frames-only", action="store_true", help="Only process keyframes.")
+
 args = parser.parse_args()
+
 filename = Path(args.file_path).name
-output_folder = filename
+output_folder = f"{filename} [I-frames]"
+
+# Defaults.
+skip_frame_value = "nointra"
+i_frames_or_keyframes = "I-frames"
+
+if args.key_frames_only:
+    line()
+    print("Keyframes only mode activated.")
+    output_folder = f"{filename} [keyframes]"
+    skip_frame_value = "nokey"
+    i_frames_or_keyframes = "keyframes"
+
 os.makedirs(output_folder, exist_ok=True)
 timestamps_path = os.path.join(output_folder, "Timestamps.txt")
+with open(timestamps_path, "w"):
+    pass
 
-if len(os.listdir(output_folder)) > 0:
-    print(f'I-frames-saver has already been run for {filename}')
+if not os.path.exists(args.file_path):
+    print(f"{args.file_path} does not exist. Exiting.")
     sys.exit()
 
 cmd = [
-    'ffmpeg', '-loglevel', 'warning', '-stats', '-i', args.file_path, '-threads', str(os.cpu_count()), 
-    '-vf', 'select=eq(pict_type\, I)',
-    '-r', '1000',
-    '-vsync', '2',
-    '-frame_pts', 'true',
-    os.path.join(output_folder, '%d.png')
+    "ffmpeg",
+    "-loglevel",
+    "warning",
+    "-skip_frame",
+    skip_frame_value,
+    "-stats",
+    "-i",
+    args.file_path,
+    "-vsync",
+    "2",
+    "-frame_pts",
+    "true",
+    "-r",
+    "1000",
+    os.path.join(output_folder, "%d.png"),
 ]
 
-print('Saving the I-frames as PNG files...')
+line()
+print(f"Saving the {i_frames_or_keyframes} as PNG files...")
 subprocess.run(cmd)
-print(f'Done! {filename} has {len(os.listdir(output_folder))} I-frames.')
+print("Done!")
+line()
 
-print('Attempting to rename the PNG files to adhere to the HH-MM-SS.ms format...')
+get_timestamps_cmd = [
+    "ffprobe",
+    "-loglevel",
+    "error",
+    "-skip_frame",
+    skip_frame_value,
+    "-select_streams",
+    "V:0",
+    "-show_entries",
+    "frame=pkt_pts_time",
+    "-of",
+    "csv=print_section=0",
+    args.file_path,
+]
 
-for file in os.listdir(output_folder):
-    if file == "Timestamps.txt":
-        continue
+process = subprocess.Popen(
+    get_timestamps_cmd,
+    stdout=subprocess.PIPE,
+)
 
-    if "-" in file:
-        print("It seems like the PNG files are already in the HH-MM-SS.ms format.")
-        break
-
-    ms = int(Path(file).stem)
-    seconds, ms = divmod(ms,1000) 
-    minutes, seconds = divmod(seconds, 60) 
-    hours, minutes = divmod(minutes, 60)
-    timestamp_formatted = f'{hours:02d}-{minutes:02d}-{seconds:02d}.{ms:03d}'
-    new_filename = f'{timestamp_formatted}.png'
-    os.rename(os.path.join(output_folder, file), os.path.join(output_folder, new_filename))
-
-# Create a list, where the timestamps are sorted in ascending order.
-output_files_sorted = sorted(os.listdir(output_folder))
-# -1 because Timestamps.txt is not an I-frame.
-
-i_frame_number = 0
-with open(timestamps_path, "w"): pass
-print("Populating Timestamps.txt using the format <I-frame number> --> <timestamp>...")
-
-for filename in output_files_sorted:
-    if filename == "Timestamps.txt":
-        continue
-
-    i_frame_number += 1
-
+while process.poll() is None:
+    output = process.stdout.readline().decode("utf-8").strip()
     with open(timestamps_path, "a") as f:
-        f.write(f'{i_frame_number} --> {Path(filename).stem}\n')
+        f.write(f"{output}\n")
 
-print(f'Done! Check out the "{output_folder}" folder.')
+if args.key_frames_only:
+    timestamps_ms = []
+
+    with open(timestamps_path, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            if line.strip() != "":
+                timestamps_ms.append(int(float(line.strip()) * 1000))
+
+    print("Deleting any PNG files that are not keyframes...")
+    for file in os.listdir(output_folder):
+        if file != "Timestamps.txt":
+            if int(Path(file).stem) not in timestamps_ms:
+                os.remove(os.path.join(output_folder, file))
+                print(f"{file} deleted")
+
+
+print(f"{filename} has {len(os.listdir(output_folder)) - 1} {i_frames_or_keyframes}.")
+print(f'All done. Check out the "{output_folder}" folder.')
