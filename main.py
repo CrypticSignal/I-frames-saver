@@ -1,5 +1,4 @@
-from argparse import ArgumentParser
-from fractions import Fraction
+from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 from pathlib import Path
 import subprocess
@@ -12,15 +11,15 @@ def line():
     print("---------------------------------------------------------------------------------------")
 
 
-parser = ArgumentParser()
+parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
 
 parser.add_argument(
     "-f",
     "--file-path",
     type=str,
     required=True,
-    help="Enter the path of the file that you want to analyse. "
-    "If the path contains a space, it must be surrounded in double quotes. "
+    help="Enter the path of the file that you want to analyse.\n"
+    "If the path contains a space, it must be surrounded in double quotes.\n"
     'Example: -f "C:/Users/H/Desktop/my file.mp4"',
 )
 
