@@ -4,8 +4,6 @@ from pathlib import Path
 import subprocess
 import sys
 
-from ffmpeg import probe
-
 
 def line():
     print("---------------------------------------------------------------------------------------")
@@ -46,25 +44,23 @@ timestamps_path = os.path.join(output_folder, "Timestamps.txt")
 with open(timestamps_path, "w"):
     pass
 
-if not os.path.exists(args.file_path):
-    print(f"{args.file_path} does not exist. Exiting.")
-    sys.exit()
+if "http://" not in args.file_path and "https://" not in args.file_path:
+    if not os.path.exists(args.file_path):
+        print(f"{args.file_path} does not exist. Exiting.")
+        sys.exit()
 
 cmd = [
-    "ffmpeg",
-    "-loglevel",
-    "warning",
-    "-skip_frame",
-    skip_frame_value,
+    "ffmpeg", "-loglevel", "warning",
+    "-copyts",
+    "-skip_frame", skip_frame_value,
     "-stats",
-    "-i",
-    args.file_path,
-    "-vsync",
-    "2",
-    "-frame_pts",
-    "true",
-    "-r",
-    "1000",
+    "-i", args.file_path,
+    "-vsync", "0",
+    # "-frame_pts sets the numeral portion of the output image filename to represent the timestamp"
+    # See https://superuser.com/a/1421195/1272956
+    "-frame_pts", "true",
+    # Setting -r 1000 means that the timestamp in the filename will be in ms.
+    "-r", "1000",
     os.path.join(output_folder, "%d.png"),
 ]
 
@@ -75,17 +71,11 @@ print("Done!")
 line()
 
 get_timestamps_cmd = [
-    "ffprobe",
-    "-loglevel",
-    "error",
-    "-skip_frame",
-    skip_frame_value,
-    "-select_streams",
-    "V:0",
-    "-show_entries",
-    "frame=pkt_pts_time",
-    "-of",
-    "csv=print_section=0",
+    "ffprobe", "-loglevel", "warning",
+    "-skip_frame", skip_frame_value,
+    "-select_streams", "V:0",
+    "-show_entries", "frame=pkt_pts_time",
+    "-of", "csv=print_section=0",
     args.file_path,
 ]
 
@@ -94,10 +84,17 @@ process = subprocess.Popen(
     stdout=subprocess.PIPE,
 )
 
+print(f"The {i_frames_or_keyframes} will be printed along with their timestamp in seconds.")
+print(f"This data will also be stored in {output_folder}/Timestamps.txt")
+
+count = 0
 while process.poll() is None:
     output = process.stdout.readline().decode("utf-8").strip()
-    with open(timestamps_path, "a") as f:
-        f.write(f"{output}\n")
+    if output != "":
+        count += 1
+        print(f"{i_frames_or_keyframes[:-1]} #{count} --> {output}")
+        with open(timestamps_path, "a") as f:
+            f.write(output + "\n")
 
 if args.key_frames_only:
     timestamps_ms = []
@@ -105,8 +102,9 @@ if args.key_frames_only:
     with open(timestamps_path, "r") as f:
         lines = f.readlines()
         for line in lines:
-            if line.strip() != "":
-                timestamps_ms.append(int(float(line.strip()) * 1000))
+            timestamps_ms.append(int(float(line.strip()) * 1000))
+
+    print(timestamps_ms)
 
     print("Deleting any PNG files that are not keyframes...")
     for file in os.listdir(output_folder):
