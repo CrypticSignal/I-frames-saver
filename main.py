@@ -28,8 +28,10 @@ args = parser.parse_args()
 filename = Path(args.file_path).name
 output_folder = f"{filename} [I-frames]"
 
-# Defaults.
+# The default is to process all I-frames, whether they are a keyframe or not.
 skip_frame_value = "nointra"
+# The default string to use in some print statements.
+# This is changed to "keyframes" if keyframes only mode is activated.
 i_frames_or_keyframes = "I-frames"
 
 if args.key_frames_only:
@@ -104,15 +106,12 @@ if args.key_frames_only:
         for line in lines:
             timestamps_ms.append(int(float(line.strip()) * 1000))
 
-    print(timestamps_ms)
-
     print("Deleting any PNG files that are not keyframes...")
     for file in os.listdir(output_folder):
-        if file != "Timestamps.txt":
+        if ".png" in file:
             if int(Path(file).stem) not in timestamps_ms:
                 os.remove(os.path.join(output_folder, file))
                 print(f"{file} deleted")
 
-
 print(f"{filename} has {len(os.listdir(output_folder)) - 1} {i_frames_or_keyframes}.")
-print(f'All done. Check out the "{output_folder}" folder.')
+print(f'All done! Check out the "{output_folder}" folder.')
